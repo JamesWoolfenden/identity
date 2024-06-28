@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	iamIdentity, done := identity.GetIam()
-	if done {
+	iamIdentity, err := identity.GetIam()
+	if err != nil {
 		return
 	}
 

@@ -5,12 +5,15 @@ import (
 	"reflect"
 )
 
-func Parse(raw string) Policy {
+func Parse(raw string) (Policy, error) {
 	var aJSON map[string]interface{}
+
 	err := json.Unmarshal([]byte(raw), &aJSON)
+
 	if err != nil {
-		panic(err)
+		return Policy{}, err
 	}
+
 	var myPolicy Policy
 
 	myPolicy.Version = aJSON["Version"].(string)
@@ -39,7 +42,7 @@ func Parse(raw string) Policy {
 		myPolicy.Statements = append(myPolicy.Statements, myStatement)
 	}
 
-	return myPolicy
+	return myPolicy, nil
 }
 
 func isArray(arr interface{}) bool {

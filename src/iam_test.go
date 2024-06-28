@@ -6,41 +6,41 @@ import (
 	"testing"
 )
 
-func TestGetIam(t *testing.T) {
-	myPolicy := []Policy{
-		{
-			Version: "2012-10-17",
-			Statements: []Statement{
-				{
-					Sid:      "",
-					Effect:   "Allow",
-					Action:   []string{"s3:*", "s3-object-lambda:*"},
-					Resource: []string{"*"},
-				},
-			},
-		},
-	}
-
-	tests := []struct {
-		name  string
-		want  IAM
-		want1 bool
-	}{
-		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := GetIam()
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetIam() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("GetIam() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
+//func TestGetIam(t *testing.T) {
+//	myPolicy := []Policy{
+//		{
+//			Version: "2012-10-17",
+//			Statements: []Statement{
+//				{
+//					Sid:      "",
+//					Effect:   "Allow",
+//					Action:   []string{"s3:*", "s3-object-lambda:*"},
+//					Resource: []string{"*"},
+//				},
+//			},
+//		},
+//	}
+//
+//	tests := []struct {
+//		name  string
+//		want  IAM
+//		want1
+//	}{
+//		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, nil},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			got, got1 := GetIam()
+//			if !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("GetIam() got = %v, want %v", got, tt.want)
+//			}
+//			if got1 != tt.want1 {
+//				t.Errorf("GetIam() got1 = %v, want %v", got1, tt.want1)
+//			}
+//		})
+//	}
+//}
 
 func TestSetIamType(t *testing.T) {
 	type args struct {
@@ -98,6 +98,42 @@ func TestSetIamType(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SetIamType() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetIam(t *testing.T) {
+	myPolicy := []Policy{
+		{
+			Version: "2012-10-17",
+			Statements: []Statement{
+				{
+					Sid:      "",
+					Effect:   "Allow",
+					Action:   []string{"s3:*", "s3-object-lambda:*"},
+					Resource: []string{"*"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		want    IAM
+		wantErr bool
+	}{
+		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetIam()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetIam() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetIam() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

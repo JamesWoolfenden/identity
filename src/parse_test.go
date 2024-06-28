@@ -16,10 +16,11 @@ func TestParse(t *testing.T) {
 	}{
 		{"pass", args{"{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\"s3:*\",\"s3-object-lambda:*\"],\n            \"Resource\": [\"*\"]\n        }\n    ]\n}"},
 			Policy{Version: "2012-10-17", Statements: []Statement{{Sid: "", Effect: "Allow", Action: []string{"s3:*", "s3-object-lambda:*"}, Resource: []string{"*"}}}}},
+		{"fail", args{"guff"}, Policy{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Parse(tt.args.raw); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := Parse(tt.args.raw); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Parse() = %v, want %v", got, tt.want)
 			}
 		})

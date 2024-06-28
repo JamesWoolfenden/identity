@@ -88,7 +88,13 @@ func TestGetAttachedUserPolicies(t *testing.T) {
 		want    iam.ListAttachedUserPoliciesOutput
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"pass", args{"identity"}, iam.ListAttachedUserPoliciesOutput{
+			AttachedPolicies: []*iam.AttachedPolicy{{
+				PolicyName: aws.String("test-policy"),
+				PolicyArn:  aws.String("arn:aws:iam::680235478471:policy/test-policy"),
+			}},
+			IsTruncated: aws.Bool(false)},
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -114,7 +120,10 @@ func TestGetGroupPolicies(t *testing.T) {
 		want    iam.ListGroupPoliciesOutput
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"Pass", args{"idgroup"}, iam.ListGroupPoliciesOutput{
+			PolicyNames: []*string{aws.String("my_developer_policy")},
+			IsTruncated: aws.Bool(false)},
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,7 +150,7 @@ func TestGetGroupPolicy(t *testing.T) {
 		want    *string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"Pass", args{"my_developer_policy", "idgroup"}, aws.String("{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -167,7 +176,10 @@ func TestGetPolicy(t *testing.T) {
 		want    *string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"Pass",
+			args{"arn:aws:iam::680235478471:policy/assume-test-policy"},
+			aws.String("{\"Statement\":[{\"Action\":\"s3:*\",\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"),
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -193,7 +205,10 @@ func TestGetRolePolicies(t *testing.T) {
 		want    iam.ListRolePoliciesOutput
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"pass", args{"assume_role"}, iam.ListRolePoliciesOutput{
+			PolicyNames: []*string{aws.String("test_policy")},
+			IsTruncated: aws.Bool(false)},
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -246,7 +261,10 @@ func TestGetUserPolicies(t *testing.T) {
 		want    iam.ListUserPoliciesOutput
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"Pass", args{"identity"}, iam.ListUserPoliciesOutput{
+			PolicyNames: []*string{aws.String("test")},
+			IsTruncated: aws.Bool(false)},
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -267,13 +285,15 @@ func TestGetUserPolicy(t *testing.T) {
 		policy string
 		user   string
 	}
+	want := "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"
+
 	tests := []struct {
 		name    string
 		args    args
 		want    *string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "Pass", args: args{policy: "test", user: "identity"}, want: &want, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

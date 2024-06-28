@@ -118,6 +118,7 @@ func GetAttachedUserPolicies(user string) (iam.ListAttachedUserPoliciesOutput, e
 			default:
 				fmt.Println(aerr.Error())
 			}
+			return iam.ListAttachedUserPoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
@@ -271,6 +272,3 @@ func GetAttachedRolePolicies(role string) (iam.ListAttachedRolePoliciesOutput, e
 
 	return *result, nil
 }
-
-//  aws iam list-role-policies --role-name assume_role --profile default
-// aws iam list-attached-role-policies --role-name assume_role --profile default

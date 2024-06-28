@@ -52,7 +52,7 @@ func SetIamType(result *sts.GetCallerIdentityOutput) (IAM, error) {
 	return myIdentity, fmt.Errorf("unable to determine iam type for %s", *result.Arn)
 }
 
-func GetIam() (IAM, bool) {
+func GetIam() (IAM, error) {
 	mySession := session.Must(session.NewSession())
 
 	svc := sts.New(mySession)
@@ -70,7 +70,7 @@ func GetIam() (IAM, bool) {
 			// Message from an error.
 			fmt.Println(err.Error())
 		}
-		return IAM{}, true
+		return IAM{}, nil
 	}
 
 	iamIdentity, err := SetIamType(result)
@@ -91,7 +91,12 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*policyDocument))
+			Parsed, err := Parse(*policyDocument)
+			if err != nil {
+				return IAM{}, err
+			}
+
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
 		MoreUserPolicies, err := GetAttachedUserPolicies(iamIdentity.Name)
@@ -106,7 +111,11 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*raw))
+			Parsed, err := Parse(*raw)
+			if err != nil {
+				return IAM{}, err
+			}
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	case "group":
 		GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity.Name)
@@ -121,7 +130,11 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*raw))
+			Parsed, err := Parse(*raw)
+			if err != nil {
+				return IAM{}, err
+			}
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
 		MoreGroupPolicies, err := GetGroupPolicies(iamIdentity.Name)
@@ -136,7 +149,11 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*raw))
+			Parsed, err := Parse(*raw)
+			if err != nil {
+				return IAM{}, err
+			}
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	case "role":
 		RolePolicies, err := GetRolePolicies(iamIdentity.Name)
@@ -150,7 +167,11 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*policyDocument))
+			Parsed, err := Parse(*policyDocument)
+			if err != nil {
+				return IAM{}, err
+			}
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
 		MoreRolePolicies, err := GetAttachedRolePolicies(iamIdentity.Name)
@@ -165,11 +186,14 @@ func GetIam() (IAM, bool) {
 				log.Fatal(err)
 			}
 
-			iamIdentity.Policies = append(iamIdentity.Policies, Parse(*policy))
+			Parsed, err := Parse(*policy)
+			if err != nil {
+				return IAM{}, err
+			}
+			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	default:
-		log.Printf("failed to determine iam")
-		return IAM{}, false
+		return IAM{}, fmt.Errorf("failed to determine iam")
 	}
-	return iamIdentity, true
+	return iamIdentity, nil
 }
