@@ -28,12 +28,13 @@ func GetAttachedGroupPolicies(group string) (iam.ListAttachedGroupPoliciesOutput
 			default:
 				fmt.Println(aerr.Error())
 			}
+
+			return iam.ListAttachedGroupPoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			fmt.Println(err.Error())
 		}
-		return iam.ListAttachedGroupPoliciesOutput{}, nil
 	}
 
 	return *result, nil
@@ -226,6 +227,8 @@ func GetRolePolicies(role string) (iam.ListRolePoliciesOutput, error) {
 			default:
 				fmt.Println(aerr.Error())
 			}
+
+			return iam.ListRolePoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
@@ -237,12 +240,12 @@ func GetRolePolicies(role string) (iam.ListRolePoliciesOutput, error) {
 	return *result, nil
 }
 
-func GetAttachedRolePolicies(user string) (iam.ListAttachedRolePoliciesOutput, error) {
+func GetAttachedRolePolicies(role string) (iam.ListAttachedRolePoliciesOutput, error) {
 	mySession := session.Must(session.NewSession())
 	svc := iam.New(mySession)
 
 	input := &iam.ListAttachedRolePoliciesInput{
-		RoleName: aws.String(user),
+		RoleName: aws.String(role),
 	}
 
 	result, err := svc.ListAttachedRolePolicies(input)
@@ -256,6 +259,8 @@ func GetAttachedRolePolicies(user string) (iam.ListAttachedRolePoliciesOutput, e
 			default:
 				fmt.Println(aerr.Error())
 			}
+
+			return iam.ListAttachedRolePoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
