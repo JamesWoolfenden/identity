@@ -169,6 +169,7 @@ func GetIam() (IAM, bool) {
 		}
 	default:
 		log.Printf("failed to determine iam")
+		return IAM{}, false
 	}
-	return iamIdentity, false
+	return iamIdentity, true
 }

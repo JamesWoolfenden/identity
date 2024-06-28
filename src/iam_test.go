@@ -7,13 +7,28 @@ import (
 )
 
 func TestGetIam(t *testing.T) {
+	myPolicy := []Policy{
+		{
+			Version: "2012-10-17",
+			Statements: []Statement{
+				{
+					Sid:      "",
+					Effect:   "Allow",
+					Action:   []string{"s3:*", "s3-object-lambda:*"},
+					Resource: []string{"*"},
+				},
+			},
+		},
+	}
+
 	tests := []struct {
 		name  string
 		want  IAM
 		want1 bool
 	}{
-		// TODO: Add test cases.
+		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, true},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := GetIam()
@@ -31,16 +46,6 @@ func TestSetIamType(t *testing.T) {
 	type args struct {
 		result *sts.GetCallerIdentityOutput
 	}
-
-	//override temp
-	//iamIdentity.IamType = "role"
-	//iamIdentity.Name = "assume_role"
-
-	//iamIdentity.IamType = "user"
-	//iamIdentity.Name = "identity"
-
-	//iamIdentity.IamType = "group"
-	//iamIdentity.Name = "idgroup"
 
 	account := "680235478471"
 	grouparn := "arn:aws:iam::680235478471:group/idgroup"
