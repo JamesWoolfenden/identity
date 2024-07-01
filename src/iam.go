@@ -11,6 +11,7 @@ import (
 
 type IAM struct {
 	Name     string   `json:"Name"`
+	Account  string   `json:"Account"`
 	IamType  string   `json:"IamType"`
 	Policies []Policy `json:"Policies"`
 }
@@ -74,19 +75,22 @@ func GetIam() (IAM, error) {
 	}
 
 	iamIdentity, err := SetIamType(result)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	iamIdentity.Account = *result.Account
+
 	switch iamIdentity.IamType {
 	case "user":
-		UserPolicies, err := GetUserPolicies(iamIdentity.Name)
+		UserPolicies, err := GetUserPolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range UserPolicies.PolicyNames {
-			policyDocument, err := GetUserPolicy(*v, iamIdentity.Name)
+			policyDocument, err := GetUserPolicy(*v, iamIdentity)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -99,13 +103,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
-		MoreUserPolicies, err := GetAttachedUserPolicies(iamIdentity.Name)
+		MoreUserPolicies, err := GetAttachedUserPolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range MoreUserPolicies.AttachedPolicies {
-			raw, err := GetPolicy(*v.PolicyArn)
+			raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 			if err != nil {
 				log.Fatal(err)
@@ -118,13 +122,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	case "group":
-		GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity.Name)
+		GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range GroupPolicies.AttachedPolicies {
-			raw, err := GetPolicy(*v.PolicyArn)
+			raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 			if err != nil {
 				log.Fatal(err)
@@ -137,13 +141,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
-		MoreGroupPolicies, err := GetGroupPolicies(iamIdentity.Name)
+		MoreGroupPolicies, err := GetGroupPolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range MoreGroupPolicies.PolicyNames {
-			raw, err := GetGroupPolicy(*v, iamIdentity.Name)
+			raw, err := GetGroupPolicy(*v, iamIdentity)
 
 			if err != nil {
 				log.Fatal(err)
@@ -156,13 +160,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	case "role":
-		RolePolicies, err := GetRolePolicies(iamIdentity.Name)
+		RolePolicies, err := GetRolePolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range RolePolicies.PolicyNames {
-			policyDocument, err := GetRolePolicy(*v, iamIdentity.Name)
+			policyDocument, err := GetRolePolicy(*v, iamIdentity)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -174,13 +178,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
-		MoreRolePolicies, err := GetAttachedRolePolicies(iamIdentity.Name)
+		MoreRolePolicies, err := GetAttachedRolePolicies(iamIdentity)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, v := range MoreRolePolicies.AttachedPolicies {
-			policy, err := GetPolicy(*v.PolicyArn)
+			policy, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 			if err != nil {
 				log.Fatal(err)

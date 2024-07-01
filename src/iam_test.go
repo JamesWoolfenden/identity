@@ -111,7 +111,7 @@ func TestGetIam(t *testing.T) {
 				{
 					Sid:      "",
 					Effect:   "Allow",
-					Action:   []string{"s3:*", "s3-object-lambda:*"},
+					Action:   []string{"sns:SetTopicAttributes"},
 					Resource: []string{"*"},
 				},
 			},
@@ -123,7 +123,7 @@ func TestGetIam(t *testing.T) {
 		want    IAM
 		wantErr bool
 	}{
-		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, false},
+		{"user", IAM{IamType: "user", Name: "basic", Account: "680235478471", Policies: myPolicy}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

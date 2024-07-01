@@ -9,7 +9,7 @@ import (
 
 func TestGetAttachedGroupPolicies(t *testing.T) {
 	type args struct {
-		group string
+		group IAM
 	}
 
 	policies := []*iam.AttachedPolicy{
@@ -25,8 +25,8 @@ func TestGetAttachedGroupPolicies(t *testing.T) {
 		want    iam.ListAttachedGroupPoliciesOutput
 		wantErr bool
 	}{
-		{"group", args{"idgroup"}, result, false}, // TODO: Add test cases.
-		{"nogroup", args{"mygroup"}, iam.ListAttachedGroupPoliciesOutput{}, true},
+		{"group", args{IAM{"idgroup", "680235478471", "", nil}}, result, false}, // TODO: Add test cases.
+		{"nogroup", args{IAM{"mygroup", "680235478471", "", nil}}, iam.ListAttachedGroupPoliciesOutput{}, true},
 	}
 
 	for _, tt := range tests {
@@ -45,7 +45,7 @@ func TestGetAttachedGroupPolicies(t *testing.T) {
 
 func TestGetAttachedRolePolicies(t *testing.T) {
 	type args struct {
-		user string
+		user IAM
 	}
 
 	policies := []*iam.AttachedPolicy{
@@ -61,8 +61,8 @@ func TestGetAttachedRolePolicies(t *testing.T) {
 		want    iam.ListAttachedRolePoliciesOutput
 		wantErr bool
 	}{
-		{name: "role", args: args{"assume_role"}, want: result, wantErr: false},
-		{name: "bogus", args: args{"notexist"}, want: iam.ListAttachedRolePoliciesOutput{}, wantErr: true},
+		{name: "role", args: args{IAM{"assume_role", "680235478471", "", nil}}, want: result, wantErr: false},
+		{name: "bogus", args: args{IAM{"notexist", "680235478471", "", nil}}, want: iam.ListAttachedRolePoliciesOutput{}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -80,15 +80,18 @@ func TestGetAttachedRolePolicies(t *testing.T) {
 
 func TestGetAttachedUserPolicies(t *testing.T) {
 	type args struct {
-		user string
+		user IAM
 	}
+
 	tests := []struct {
 		name    string
 		args    args
 		want    iam.ListAttachedUserPoliciesOutput
 		wantErr bool
 	}{
-		{"pass", args{"identity"}, iam.ListAttachedUserPoliciesOutput{
+		{"pass", args{IAM{
+			"identity", "680235478471", "", nil,
+		}}, iam.ListAttachedUserPoliciesOutput{
 			AttachedPolicies: []*iam.AttachedPolicy{{
 				PolicyName: aws.String("test-policy"),
 				PolicyArn:  aws.String("arn:aws:iam::680235478471:policy/test-policy"),
@@ -96,6 +99,7 @@ func TestGetAttachedUserPolicies(t *testing.T) {
 			IsTruncated: aws.Bool(false)},
 			false},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetAttachedUserPolicies(tt.args.user)
@@ -112,7 +116,7 @@ func TestGetAttachedUserPolicies(t *testing.T) {
 
 func TestGetGroupPolicies(t *testing.T) {
 	type args struct {
-		group string
+		group IAM
 	}
 	tests := []struct {
 		name    string
@@ -120,7 +124,7 @@ func TestGetGroupPolicies(t *testing.T) {
 		want    iam.ListGroupPoliciesOutput
 		wantErr bool
 	}{
-		{"Pass", args{"idgroup"}, iam.ListGroupPoliciesOutput{
+		{"Pass", args{IAM{"idgroup", "680235478471", "", nil}}, iam.ListGroupPoliciesOutput{
 			PolicyNames: []*string{aws.String("my_developer_policy")},
 			IsTruncated: aws.Bool(false)},
 			false},
@@ -142,7 +146,7 @@ func TestGetGroupPolicies(t *testing.T) {
 func TestGetGroupPolicy(t *testing.T) {
 	type args struct {
 		policy string
-		group  string
+		group  IAM
 	}
 	tests := []struct {
 		name    string
@@ -150,7 +154,8 @@ func TestGetGroupPolicy(t *testing.T) {
 		want    *string
 		wantErr bool
 	}{
-		{"Pass", args{"my_developer_policy", "idgroup"}, aws.String("{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"), false},
+		{"Pass",
+			args{"my_developer_policy", IAM{"idgroup", "680235478471", "", nil}}, aws.String("{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,8 +173,10 @@ func TestGetGroupPolicy(t *testing.T) {
 
 func TestGetPolicy(t *testing.T) {
 	type args struct {
-		arn string
+		arn     string
+		account IAM
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -177,13 +184,14 @@ func TestGetPolicy(t *testing.T) {
 		wantErr bool
 	}{
 		{"Pass",
-			args{"arn:aws:iam::680235478471:policy/assume-test-policy"},
+			args{"arn:aws:iam::680235478471:policy/assume-test-policy",
+				IAM{"pass", "680235478471", "", nil}},
 			aws.String("{\"Statement\":[{\"Action\":\"s3:*\",\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"),
 			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetPolicy(tt.args.arn)
+			got, err := GetPolicy(tt.args.arn, tt.args.account)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetPolicy() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -197,7 +205,7 @@ func TestGetPolicy(t *testing.T) {
 
 func TestGetRolePolicies(t *testing.T) {
 	type args struct {
-		role string
+		role IAM
 	}
 	tests := []struct {
 		name    string
@@ -205,9 +213,10 @@ func TestGetRolePolicies(t *testing.T) {
 		want    iam.ListRolePoliciesOutput
 		wantErr bool
 	}{
-		{"pass", args{"assume_role"}, iam.ListRolePoliciesOutput{
-			PolicyNames: []*string{aws.String("test_policy")},
-			IsTruncated: aws.Bool(false)},
+		{"pass", args{IAM{"assume_role", "680235478471", "", nil}},
+			iam.ListRolePoliciesOutput{
+				PolicyNames: []*string{aws.String("test_policy")},
+				IsTruncated: aws.Bool(false)},
 			false},
 	}
 	for _, tt := range tests {
@@ -227,7 +236,7 @@ func TestGetRolePolicies(t *testing.T) {
 func TestGetRolePolicy(t *testing.T) {
 	type args struct {
 		policy string
-		role   string
+		role   IAM
 	}
 	tests := []struct {
 		name    string
@@ -235,7 +244,10 @@ func TestGetRolePolicy(t *testing.T) {
 		want    *string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{"Pass",
+			args{"test_policy",
+				IAM{"assume_role", "680235478471", "", nil}},
+			aws.String("{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -253,7 +265,7 @@ func TestGetRolePolicy(t *testing.T) {
 
 func TestGetUserPolicies(t *testing.T) {
 	type args struct {
-		user string
+		user IAM
 	}
 	tests := []struct {
 		name    string
@@ -261,7 +273,7 @@ func TestGetUserPolicies(t *testing.T) {
 		want    iam.ListUserPoliciesOutput
 		wantErr bool
 	}{
-		{"Pass", args{"identity"}, iam.ListUserPoliciesOutput{
+		{"Pass", args{IAM{"identity", "680235478471", "", nil}}, iam.ListUserPoliciesOutput{
 			PolicyNames: []*string{aws.String("test")},
 			IsTruncated: aws.Bool(false)},
 			false},
@@ -283,7 +295,7 @@ func TestGetUserPolicies(t *testing.T) {
 func TestGetUserPolicy(t *testing.T) {
 	type args struct {
 		policy string
-		user   string
+		user   IAM
 	}
 	want := "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ec2:Describe*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"
 
@@ -293,7 +305,7 @@ func TestGetUserPolicy(t *testing.T) {
 		want    *string
 		wantErr bool
 	}{
-		{name: "Pass", args: args{policy: "test", user: "identity"}, want: &want, wantErr: false},
+		{name: "Pass", args: args{policy: "test", user: IAM{"identity", "680235478471", "", nil}}, want: &want, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -304,6 +316,40 @@ func TestGetUserPolicy(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetUserPolicy() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetAttachedUserPolicies1(t *testing.T) {
+	type args struct {
+		user IAM
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    iam.ListAttachedUserPoliciesOutput
+		wantErr bool
+	}{
+		{"pass", args{
+			IAM{"identity", "680235478471", "", nil}},
+			iam.ListAttachedUserPoliciesOutput{
+				IsTruncated: aws.Bool(false),
+				AttachedPolicies: []*iam.AttachedPolicy{{
+					PolicyName: aws.String("test-policy"),
+					PolicyArn:  aws.String("arn:aws:iam::680235478471:policy/test-policy")}},
+			},
+			false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetAttachedUserPolicies(tt.args.user)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAttachedUserPolicies() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetAttachedUserPolicies() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
