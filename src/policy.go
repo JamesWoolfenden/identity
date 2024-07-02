@@ -11,7 +11,8 @@ import (
 )
 
 func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+
 	creds := stscreds.NewCredentials(mySession, FormatRole(group))
 
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -44,7 +45,7 @@ func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, e
 }
 
 func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 	creds := stscreds.NewCredentials(mySession, FormatRole(group))
 
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -76,7 +77,7 @@ func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 }
 
 func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 	creds := stscreds.NewCredentials(mySession, FormatRole(user))
 
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -110,7 +111,7 @@ func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 }
 
 func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 	creds := stscreds.NewCredentials(mySession, FormatRole(user))
 
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -144,7 +145,7 @@ func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, erro
 
 func GetPolicy(arn string, account IAM) (*string, error) {
 	var result *iam.GetPolicyOutput
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 	creds := stscreds.NewCredentials(mySession, FormatRole(account))
 
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -171,7 +172,7 @@ func GetPolicy(arn string, account IAM) (*string, error) {
 
 func GetUserPolicy(policy string, ident IAM) (*string, error) {
 	var result *iam.GetUserPolicyOutput
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
 	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -191,7 +192,7 @@ func GetUserPolicy(policy string, ident IAM) (*string, error) {
 
 func GetRolePolicy(policy string, ident IAM) (*string, error) {
 	var result *iam.GetRolePolicyOutput
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
 	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -211,7 +212,7 @@ func GetRolePolicy(policy string, ident IAM) (*string, error) {
 
 func GetGroupPolicy(policy string, group IAM) (*string, error) {
 	var result *iam.GetGroupPolicyOutput
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
 	creds := stscreds.NewCredentials(mySession, FormatRole(group))
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -230,7 +231,7 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 }
 
 func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
 	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
@@ -263,8 +264,42 @@ func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 	return *result, nil
 }
 
+func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+
+	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+
+	input := &iam.ListGroupsForUserInput{
+		UserName: aws.String(ident.Name),
+	}
+
+	result, err := svc.ListGroupsForUser(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case iam.ErrCodeNoSuchEntityException:
+				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+			case iam.ErrCodeServiceFailureException:
+				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+
+			return iam.ListGroupsForUserOutput{}, aerr
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return iam.ListGroupsForUserOutput{}, err
+	}
+
+	return *result, nil
+}
+
 func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, error) {
-	mySession := session.Must(session.NewSession())
+	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
 	svc := iam.New(mySession, &aws.Config{Credentials: creds})
 

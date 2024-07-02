@@ -12,7 +12,8 @@ data "aws_iam_policy_document" "policy" {
       "iam:GetPolicyVersion",
       "iam:GetUserPolicy",
       "iam:GetRolePolicy",
-      "iam:GetGroupPolicy"
+      "iam:GetGroupPolicy",
+      "iam:ListGroupsForUser"
     ]
     resources = ["*"]
   }
