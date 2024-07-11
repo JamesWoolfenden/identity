@@ -1,12 +1,12 @@
 package main
 
 import (
-	"identity/src"
+	Identity "identity/src"
 	"log"
 )
 
 func main() {
-	iamIdentity, err := identity.GetIam()
+	iamIdentity, err := Identity.GetIam()
 	if err != nil {
 		return
 	}

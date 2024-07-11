@@ -1,4 +1,4 @@
-package identity
+package Identity
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
