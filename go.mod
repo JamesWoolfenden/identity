@@ -1,4 +1,4 @@
-module identity
+module github.com/jameswoolfenden/identity
 
 go 1.22
 

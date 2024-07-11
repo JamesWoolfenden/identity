@@ -1,7 +1,7 @@
 package main
 
 import (
-	Identity "identity/src"
+	"github.com/jameswoolfenden/identity/src"
 	"log"
 )
 
