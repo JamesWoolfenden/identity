@@ -5,7 +5,17 @@ import (
 	"reflect"
 )
 
+type EmptyParseError struct{}
+
+func (m *EmptyParseError) Error() string {
+	return "cannot parse such empty"
+}
+
 func Parse(raw string) (Policy, error) {
+	if raw == "" {
+		return Policy{}, &EmptyParseError{}
+	}
+
 	var aJSON map[string]interface{}
 
 	err := json.Unmarshal([]byte(raw), &aJSON)
