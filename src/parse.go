@@ -28,31 +28,41 @@ func Parse(raw string) (Policy, error) {
 
 	myPolicy.Version = aJSON["Version"].(string)
 
-	for _, statement := range aJSON["Statement"].([]interface{}) {
-		myStatement := Statement{}
-		myStatement.Effect = statement.(map[string]interface{})["Effect"].(string)
-		rawResource := statement.(map[string]interface{})["Resource"]
-
-		if isSlice(rawResource) {
-			for _, v := range rawResource.([]interface{}) {
-				myStatement.Resource = append(myStatement.Resource, v.(string))
-			}
-		} else {
-			myStatement.Resource = append(myStatement.Resource, rawResource.(string))
+	if statements, ok := aJSON["Statement"].([]interface{}); ok {
+		for _, statement := range statements {
+			myPolicy = parseIamStatement(statement, myPolicy)
 		}
-
-		if isSlice(statement.(map[string]interface{})["Action"]) {
-			for _, v := range statement.(map[string]interface{})["Action"].([]interface{}) {
-				myStatement.Action = append(myStatement.Action, v.(string))
-			}
-		} else {
-			myStatement.Action = append(myStatement.Action, statement.(map[string]interface{})["Action"].(string))
-		}
-
-		myPolicy.Statements = append(myPolicy.Statements, myStatement)
+	} else {
+		myPolicy = parseIamStatement(aJSON["Statement"], myPolicy)
 	}
 
 	return myPolicy, nil
+}
+
+func parseIamStatement(statement interface{}, myPolicy Policy) Policy {
+	myStatement := Statement{}
+	myStatement.Effect = statement.(map[string]interface{})["Effect"].(string)
+	rawResource := statement.(map[string]interface{})["Resource"]
+
+	if isSlice(rawResource) {
+		for _, v := range rawResource.([]interface{}) {
+			myStatement.Resource = append(myStatement.Resource, v.(string))
+		}
+	} else {
+		myStatement.Resource = append(myStatement.Resource, rawResource.(string))
+	}
+
+	if isSlice(statement.(map[string]interface{})["Action"]) {
+		for _, v := range statement.(map[string]interface{})["Action"].([]interface{}) {
+			myStatement.Action = append(myStatement.Action, v.(string))
+		}
+	} else {
+		myStatement.Action = append(myStatement.Action, statement.(map[string]interface{})["Action"].(string))
+	}
+
+	myPolicy.Statements = append(myPolicy.Statements, myStatement)
+
+	return myPolicy
 }
 
 func isArray(arr interface{}) bool {

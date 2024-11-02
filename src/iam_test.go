@@ -1,46 +1,12 @@
 package Identity
 
 import (
-	"github.com/aws/aws-sdk-go/service/sts"
 	"reflect"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
-//func TestGetIam(t *testing.T) {
-//	myPolicy := []Policy{
-//		{
-//			Version: "2012-10-17",
-//			Statements: []Statement{
-//				{
-//					Sid:      "",
-//					Effect:   "Allow",
-//					Action:   []string{"s3:*", "s3-object-lambda:*"},
-//					Resource: []string{"*"},
-//				},
-//			},
-//		},
-//	}
-//
-//	tests := []struct {
-//		name  string
-//		want  IAM
-//		want1
-//	}{
-//		{"user", IAM{IamType: "user", Name: "jameswoolfenden", Policies: myPolicy}, nil},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			got, got1 := GetIam()
-//			if !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("GetIam() got = %v, want %v", got, tt.want)
-//			}
-//			if got1 != tt.want1 {
-//				t.Errorf("GetIam() got1 = %v, want %v", got1, tt.want1)
-//			}
-//		})
-//	}
-//}
 
 func TestSetIamType(t *testing.T) {
 	type args struct {
@@ -111,7 +77,7 @@ func TestGetIam(t *testing.T) {
 				{
 					Sid:      "",
 					Effect:   "Allow",
-					Action:   []string{"sns:SetTopicAttributes"},
+					Action:   []string{"ssm:DescribePatchBaselines"},
 					Resource: []string{"*"},
 				},
 			},
@@ -123,6 +89,7 @@ func TestGetIam(t *testing.T) {
 		want    IAM
 		wantErr bool
 	}{
+		//not a very good test as its current retreiving what the used iAM context is
 		{"user", IAM{IamType: "user", Name: "basic", Account: "680235478471", Policies: myPolicy}, false},
 	}
 	for _, tt := range tests {
