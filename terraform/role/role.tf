@@ -42,7 +42,7 @@ resource "aws_iam_role_policy" "test_policy" {
   })
 }
 
-data aws_caller_identity "current" {}
+data "aws_caller_identity" "current" {}
 
 output "role" {
   value = aws_iam_role.assume_role.arn

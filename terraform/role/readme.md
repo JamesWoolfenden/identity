@@ -1,4 +1,8 @@
-aws sts assume-role --role-arn arn:aws:iam::680235478471:role/assume_role --profile basic --role-session-name temp
+# info
+
+```text
+aws sts assume-role --role-arn arn:aws:iam::680235478471:role/assume_role \
+--profile basic --role-session-name temp
 
 "AccessKeyId": "",
 "SecretAccessKey": "",
@@ -14,8 +18,9 @@ export AWS_SECRET_ACCESS_KEY=""
 [profile assumed]
 role_arn = arn:aws:iam::680235478471:role/assume_role
 source_profile = basic
-
 ```
+
+```text
 aws s3 ls --profile assumed
 
 2022-07-25 23:09:13 680235478471-terraform-state

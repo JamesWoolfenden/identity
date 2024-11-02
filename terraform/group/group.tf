@@ -1,5 +1,5 @@
 resource "aws_iam_group" "idgroup" {
-  name               = "idgroup"
+  name = "idgroup"
 }
 
 resource "aws_iam_group_policy" "idgroup" {
