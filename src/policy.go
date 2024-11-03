@@ -2,12 +2,13 @@ package Identity
 
 import (
 	"fmt"
+	"net/url"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"net/url"
 )
 
 func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, error) {

@@ -2,11 +2,12 @@ package Identity
 
 import (
 	"fmt"
+	"log"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"log"
-	"strings"
 )
 
 type IAM struct {
@@ -193,7 +194,7 @@ func GetIam() (IAM, error) {
 func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 	GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity)
 	if err != nil {
-		log.Fatal(err)
+		return IAM{}, err
 	}
 
 	for _, v := range GroupPolicies.AttachedPolicies {

@@ -1,8 +1,12 @@
+//go:build !test
+// +build !test
+
 package main
 
 import (
-	"github.com/jameswoolfenden/identity/src"
 	"log"
+
+	Identity "github.com/jameswoolfenden/identity/src"
 )
 
 func main() {

@@ -1,10 +1,11 @@
 package Identity
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"reflect"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/iam"
 )
 
 func TestGetAttachedGroupPolicies(t *testing.T) {
