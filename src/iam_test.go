@@ -74,7 +74,7 @@ func TestGetIam(t *testing.T) {
 			Version: "2012-10-17",
 			Statements: []Statement{
 				{
-					Sid:      "",
+					Sid:      "VisualEditor0",
 					Effect:   "Allow",
 					Action:   []string{"ssm:DescribePatchBaselines"},
 					Resource: []string{"*"},

@@ -2,10 +2,23 @@ package Identity
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 )
 
 type EmptyParseError struct{}
+
+const (
+	UserType       = "user"
+	GroupType      = "group"
+	RoleType       = "role"
+	VersionField   = "Version"
+	StatementField = "Statement"
+	SidField       = "Sid"
+	EffectField    = "Effect"
+	ResourceField  = "Resource"
+	ActionField    = "Action"
+)
 
 func (m *EmptyParseError) Error() string {
 	return "cannot parse such empty"
@@ -26,23 +39,37 @@ func Parse(raw string) (Policy, error) {
 
 	var myPolicy Policy
 
-	myPolicy.Version = aJSON["Version"].(string)
-
-	if statements, ok := aJSON["Statement"].([]interface{}); ok {
-		for _, statement := range statements {
-			myPolicy = parseIamStatement(statement, myPolicy)
-		}
+	if version, ok := aJSON[VersionField].(string); ok {
+		myPolicy.Version = version
 	} else {
-		myPolicy = parseIamStatement(aJSON["Statement"], myPolicy)
+		return Policy{}, fmt.Errorf("invalid Version format")
 	}
 
-	return myPolicy, nil
+	if statements, ok := aJSON[StatementField].([]interface{}); ok {
+		for _, statement := range statements {
+			myPolicy, err = parseIamStatement(statement, myPolicy)
+		}
+	} else {
+		myPolicy, err = parseIamStatement(aJSON[StatementField], myPolicy)
+	}
+
+	return myPolicy, err
 }
 
-func parseIamStatement(statement interface{}, myPolicy Policy) Policy {
+func parseIamStatement(statement interface{}, myPolicy Policy) (Policy, error) {
 	myStatement := Statement{}
-	myStatement.Effect = statement.(map[string]interface{})["Effect"].(string)
-	rawResource := statement.(map[string]interface{})["Resource"]
+
+	if sid, ok := statement.(map[string]interface{})[SidField].(string); ok {
+		myStatement.Sid = sid
+	}
+
+	if effect, ok := statement.(map[string]interface{})[EffectField].(string); ok {
+		myStatement.Effect = effect
+	} else {
+		return Policy{}, fmt.Errorf("invalid Effect format")
+	}
+
+	rawResource := statement.(map[string]interface{})[ResourceField]
 
 	if isSlice(rawResource) {
 		for _, v := range rawResource.([]interface{}) {
@@ -52,17 +79,17 @@ func parseIamStatement(statement interface{}, myPolicy Policy) Policy {
 		myStatement.Resource = append(myStatement.Resource, rawResource.(string))
 	}
 
-	if isSlice(statement.(map[string]interface{})["Action"]) {
-		for _, v := range statement.(map[string]interface{})["Action"].([]interface{}) {
+	if isSlice(statement.(map[string]interface{})[ActionField]) {
+		for _, v := range statement.(map[string]interface{})[ActionField].([]interface{}) {
 			myStatement.Action = append(myStatement.Action, v.(string))
 		}
 	} else {
-		myStatement.Action = append(myStatement.Action, statement.(map[string]interface{})["Action"].(string))
+		myStatement.Action = append(myStatement.Action, statement.(map[string]interface{})[ActionField].(string))
 	}
 
 	myPolicy.Statements = append(myPolicy.Statements, myStatement)
 
-	return myPolicy
+	return myPolicy, nil
 }
 
 func isArray(arr interface{}) bool {

@@ -2,7 +2,6 @@ package Identity
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -34,19 +33,19 @@ func SetIamType(result *sts.GetCallerIdentityOutput) (IAM, error) {
 	var myIdentity IAM
 
 	if strings.Contains(*result.Arn, ":user/") {
-		myIdentity.IamType = "user"
+		myIdentity.IamType = UserType
 		myIdentity.Name = strings.Split(*result.Arn, ":user/")[1]
 		return myIdentity, nil
 	}
 
 	if strings.Contains(*result.Arn, ":group/") {
-		myIdentity.IamType = "group"
+		myIdentity.IamType = GroupType
 		myIdentity.Name = strings.Split(*result.Arn, ":group/")[1]
 		return myIdentity, nil
 	}
 
 	if strings.Contains(*result.Arn, ":role/") {
-		myIdentity.IamType = "role"
+		myIdentity.IamType = RoleType
 		myIdentity.Name = strings.Split(*result.Arn, ":role/")[1]
 		return myIdentity, nil
 	}
@@ -78,42 +77,45 @@ func GetIam() (IAM, error) {
 	iamIdentity, err := SetIamType(result)
 
 	if err != nil {
-		log.Fatal(err)
+		return IAM{}, fmt.Errorf("failed to set Iam Type: %w", err)
 	}
 
 	iamIdentity.Account = *result.Account
 
 	switch iamIdentity.IamType {
-	case "user":
+	case UserType:
 		UserPolicies, err := GetUserPolicies(iamIdentity)
+
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get user policies: %w", err)
 		}
 
 		for _, v := range UserPolicies.PolicyNames {
 			policyDocument, err := GetUserPolicy(*v, iamIdentity)
+
 			if err != nil {
-				log.Fatal(err)
+				return IAM{}, fmt.Errorf("failed to get user policies from policy names : %w", err)
 			}
 
 			Parsed, err := Parse(*policyDocument)
 			if err != nil {
-				return IAM{}, err
+				return IAM{}, fmt.Errorf("failed to parse policy document: %w", err)
 			}
 
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
 		MoreUserPolicies, err := GetAttachedUserPolicies(iamIdentity)
+
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get attached user policies: %w", err)
 		}
 
 		for _, v := range MoreUserPolicies.AttachedPolicies {
 			raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 			if err != nil {
-				log.Fatal(err)
+				return IAM{}, fmt.Errorf("failed in call to getPolicy: %w", err)
 			}
 
 			Parsed, err := Parse(*raw)
@@ -125,64 +127,73 @@ func GetIam() (IAM, error) {
 
 		//what groups is this user in?
 		groups, err := GetUserGroups(iamIdentity)
+
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get user groups: %w", err)
 		}
 
 		for _, v := range groups.Groups {
 			tempIdentity := IAM{
 				Name:    *v.GroupName,
-				IamType: "group",
+				IamType: GroupType,
 				Account: iamIdentity.Account,
 			}
 
 			groupPolicies, err := GetPoliciesForGroup(tempIdentity)
+
 			if err != nil {
-				log.Fatal(err)
+				return IAM{}, fmt.Errorf("failed to get user policies from group: %w", err)
 			}
+
 			iamIdentity.Policies = append(iamIdentity.Policies, groupPolicies.Policies...)
 		}
 
-	case "group":
+	case GroupType:
 		iam, err2 := GetPoliciesForGroup(iamIdentity)
 		if err2 != nil {
 			return iam, err2
 		}
-	case "role":
+	case RoleType:
 		RolePolicies, err := GetRolePolicies(iamIdentity)
+
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get role policies: %w", err)
 		}
 
 		for _, v := range RolePolicies.PolicyNames {
 			policyDocument, err := GetRolePolicy(*v, iamIdentity)
+
 			if err != nil {
-				log.Fatal(err)
+				return IAM{}, fmt.Errorf("failed to get role policies: %w", err)
 			}
 
 			Parsed, err := Parse(*policyDocument)
+
 			if err != nil {
 				return IAM{}, err
 			}
+
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
 		MoreRolePolicies, err := GetAttachedRolePolicies(iamIdentity)
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get attached role policies: %w", err)
 		}
 
 		for _, v := range MoreRolePolicies.AttachedPolicies {
 			policy, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 			if err != nil {
-				log.Fatal(err)
+				return IAM{}, fmt.Errorf("failed to get policies: %w", err)
 			}
 
 			Parsed, err := Parse(*policy)
+
 			if err != nil {
 				return IAM{}, err
 			}
+
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 	default:
@@ -193,6 +204,7 @@ func GetIam() (IAM, error) {
 
 func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 	GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity)
+
 	if err != nil {
 		return IAM{}, err
 	}
@@ -201,10 +213,11 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 		raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
 
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get policies: %w", err)
 		}
 
 		Parsed, err := Parse(*raw)
+
 		if err != nil {
 			return IAM{}, err
 		}
@@ -212,21 +225,24 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 	}
 
 	MoreGroupPolicies, err := GetGroupPolicies(iamIdentity)
+
 	if err != nil {
-		log.Fatal(err)
+		return IAM{}, fmt.Errorf("failed to get group policies: %w", err)
 	}
 
 	for _, v := range MoreGroupPolicies.PolicyNames {
 		raw, err := GetGroupPolicy(*v, iamIdentity)
 
 		if err != nil {
-			log.Fatal(err)
+			return IAM{}, fmt.Errorf("failed to get group policies: %w", err)
 		}
 
 		Parsed, err := Parse(*raw)
+
 		if err != nil {
 			return IAM{}, err
 		}
+
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 	}
 	return iamIdentity, nil
