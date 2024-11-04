@@ -4,9 +4,8 @@
 package main
 
 import (
-	"log"
-
 	Identity "github.com/jameswoolfenden/identity/src"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -15,5 +14,5 @@ func main() {
 		return
 	}
 
-	log.Print(iamIdentity)
+	log.Info().Msgf("Identity %s", iamIdentity)
 }

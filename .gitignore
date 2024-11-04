@@ -4,3 +4,4 @@ terraform.tfstate.backup
 .idea/
 identity
 .terraform.lock.hcl
+identity.exe

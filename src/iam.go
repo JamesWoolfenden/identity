@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/rs/zerolog/log"
 )
 
 type IAM struct {
@@ -64,12 +65,12 @@ func GetIam() (IAM, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
 		return IAM{}, nil
 	}
@@ -221,6 +222,7 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 		if err != nil {
 			return IAM{}, err
 		}
+
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 	}
 
@@ -245,5 +247,6 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 	}
+
 	return iamIdentity, nil
 }

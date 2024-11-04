@@ -1,7 +1,6 @@
 package Identity
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -9,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/rs/zerolog/log"
 )
 
 func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, error) {
@@ -27,18 +27,18 @@ func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, e
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("Exception type: %s %s", iam.ErrCodeNoSuchEntityException, aerr)
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("Exception type: %s %s", iam.ErrCodeServiceFailureException, aerr)
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
 
 			return iam.ListAttachedGroupPoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(aerr)
 		}
 	}
 
@@ -60,16 +60,16 @@ func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Msg(aerr.Error())
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(aerr)
 		}
 		return iam.ListGroupPoliciesOutput{}, nil
 	}
@@ -92,19 +92,19 @@ func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println("Please deploy the identity role")
-				fmt.Println(aerr.Error())
+				log.Error().Msgf("Please deploy the identity role %s", aerr)
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
+
 		return iam.ListUserPoliciesOutput{}, err
 	}
 
@@ -126,17 +126,18 @@ func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, erro
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
+
 			return iam.ListAttachedUserPoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
 		return iam.ListAttachedUserPoliciesOutput{}, err
 	}
@@ -156,14 +157,14 @@ func GetPolicy(arn string, account IAM) (*string, error) {
 	})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
 	version, err := svc.GetPolicyVersion(&iam.GetPolicyVersionInput{VersionId: result.Policy.DefaultVersionId, PolicyArn: result.Policy.Arn})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
@@ -184,9 +185,10 @@ func GetUserPolicy(policy string, ident IAM) (*string, error) {
 	})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Error().Err(err)
 		return nil, err
 	}
+
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
 	return &temp, nil
 }
@@ -204,9 +206,10 @@ func GetRolePolicy(policy string, ident IAM) (*string, error) {
 	})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Error().Err(err)
 		return nil, err
 	}
+
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
 	return &temp, nil
 }
@@ -224,9 +227,10 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 	})
 
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Error().Err(err)
 		return nil, err
 	}
+
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
 	return &temp, nil
 }
@@ -246,19 +250,20 @@ func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
 
 			return iam.ListRolePoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
+
 		return iam.ListRolePoliciesOutput{}, err
 	}
 
@@ -280,19 +285,20 @@ func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
 
 			return iam.ListGroupsForUserOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
+
 		return iam.ListGroupsForUserOutput{}, err
 	}
 
@@ -313,19 +319,20 @@ func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, err
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
-				fmt.Println(iam.ErrCodeNoSuchEntityException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
 			case iam.ErrCodeServiceFailureException:
-				fmt.Println(iam.ErrCodeServiceFailureException, aerr.Error())
+				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error().Err(aerr)
 			}
 
 			return iam.ListAttachedRolePoliciesOutput{}, aerr
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error().Err(err)
 		}
+
 		return iam.ListAttachedRolePoliciesOutput{}, err
 	}
 
