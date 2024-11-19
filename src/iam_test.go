@@ -76,7 +76,7 @@ func TestGetIam(t *testing.T) {
 				{
 					Sid:      "VisualEditor0",
 					Effect:   "Allow",
-					Action:   []string{"ssm:DescribePatchBaselines"},
+					Action:   []string{"ec2:DescribeSpotDatafeedSubscription"},
 					Resource: []string{"*"},
 				},
 			},

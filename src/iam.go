@@ -1,6 +1,7 @@
 package Identity
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,15 +63,12 @@ func GetIam() (IAM, error) {
 
 	result, err := svc.GetCallerIdentity(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			default:
 				log.Error().Err(aerr)
 			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(err)
 		}
 		return IAM{}, nil
 	}
@@ -121,7 +119,7 @@ func GetIam() (IAM, error) {
 
 			Parsed, err := Parse(*raw)
 			if err != nil {
-				return IAM{}, err
+				return IAM{}, fmt.Errorf("failed to parse: %w", err)
 			}
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
@@ -152,7 +150,7 @@ func GetIam() (IAM, error) {
 	case GroupType:
 		iam, err2 := GetPoliciesForGroup(iamIdentity)
 		if err2 != nil {
-			return iam, err2
+			return iam, fmt.Errorf("failed to get policies for group: %w", err2)
 		}
 	case RoleType:
 		RolePolicies, err := GetRolePolicies(iamIdentity)
@@ -171,7 +169,7 @@ func GetIam() (IAM, error) {
 			Parsed, err := Parse(*policyDocument)
 
 			if err != nil {
-				return IAM{}, err
+				return IAM{}, fmt.Errorf("failed to parse policies: %w", err)
 			}
 
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
@@ -192,7 +190,7 @@ func GetIam() (IAM, error) {
 			Parsed, err := Parse(*policy)
 
 			if err != nil {
-				return IAM{}, err
+				return IAM{}, fmt.Errorf("failed to parse policies: %w", err)
 			}
 
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
@@ -207,7 +205,7 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 	GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity)
 
 	if err != nil {
-		return IAM{}, err
+		return IAM{}, fmt.Errorf("failed to get attached group policies: %w", err)
 	}
 
 	for _, v := range GroupPolicies.AttachedPolicies {
@@ -220,7 +218,7 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 		Parsed, err := Parse(*raw)
 
 		if err != nil {
-			return IAM{}, err
+			return IAM{}, fmt.Errorf("failed to parse policies: %w", err)
 		}
 
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
@@ -242,7 +240,7 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 		Parsed, err := Parse(*raw)
 
 		if err != nil {
-			return IAM{}, err
+			return IAM{}, fmt.Errorf("failed to parse policies: %w", err)
 		}
 
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)

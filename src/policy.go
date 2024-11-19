@@ -1,6 +1,8 @@
 package Identity
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,9 +16,9 @@ import (
 func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(group))
+	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
 
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListAttachedGroupPoliciesInput{
 		GroupName: aws.String(group.Name),
@@ -24,7 +26,8 @@ func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, e
 
 	result, err := svc.ListAttachedGroupPolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("Exception type: %s %s", iam.ErrCodeNoSuchEntityException, aerr)
@@ -35,10 +38,6 @@ func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, e
 			}
 
 			return iam.ListAttachedGroupPoliciesOutput{}, aerr
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(aerr)
 		}
 	}
 
@@ -47,9 +46,9 @@ func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, e
 
 func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	creds := stscreds.NewCredentials(mySession, FormatRole(group))
+	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
 
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListGroupPoliciesInput{
 		GroupName: aws.String(group.Name),
@@ -57,7 +56,8 @@ func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 
 	result, err := svc.ListGroupPolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -66,10 +66,6 @@ func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 			default:
 				log.Error().Msg(aerr.Error())
 			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(aerr)
 		}
 		return iam.ListGroupPoliciesOutput{}, nil
 	}
@@ -79,9 +75,9 @@ func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
 
 func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	creds := stscreds.NewCredentials(mySession, FormatRole(user))
+	credentials := stscreds.NewCredentials(mySession, FormatRole(user))
 
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListUserPoliciesInput{
 		UserName: aws.String(user.Name),
@@ -89,7 +85,8 @@ func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 
 	result, err := svc.ListUserPolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -98,11 +95,6 @@ func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 			default:
 				log.Error().Msgf("Please deploy the identity role %s", aerr)
 			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-
-			log.Error().Err(err)
 		}
 
 		return iam.ListUserPoliciesOutput{}, err
@@ -113,9 +105,9 @@ func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
 
 func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	creds := stscreds.NewCredentials(mySession, FormatRole(user))
+	credentials := stscreds.NewCredentials(mySession, FormatRole(user))
 
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListAttachedUserPoliciesInput{
 		UserName: aws.String(user.Name),
@@ -123,7 +115,8 @@ func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, erro
 
 	result, err := svc.ListAttachedUserPolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -134,10 +127,6 @@ func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, erro
 			}
 
 			return iam.ListAttachedUserPoliciesOutput{}, aerr
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(err)
 		}
 		return iam.ListAttachedUserPoliciesOutput{}, err
 	}
@@ -148,9 +137,9 @@ func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, erro
 func GetPolicy(arn string, account IAM) (*string, error) {
 	var result *iam.GetPolicyOutput
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	creds := stscreds.NewCredentials(mySession, FormatRole(account))
+	credentials := stscreds.NewCredentials(mySession, FormatRole(account))
 
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	result, err := svc.GetPolicy(&iam.GetPolicyInput{
 		PolicyArn: &arn,
@@ -158,14 +147,14 @@ func GetPolicy(arn string, account IAM) (*string, error) {
 
 	if err != nil {
 		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get policies: %w", err)
 	}
 
 	version, err := svc.GetPolicyVersion(&iam.GetPolicyVersionInput{VersionId: result.Policy.DefaultVersionId, PolicyArn: result.Policy.Arn})
 
 	if err != nil {
 		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get policy version: %w", err)
 	}
 
 	temp, _ := url.QueryUnescape(*version.PolicyVersion.Document)
@@ -176,8 +165,8 @@ func GetUserPolicy(policy string, ident IAM) (*string, error) {
 	var result *iam.GetUserPolicyOutput
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	result, err := svc.GetUserPolicy(&iam.GetUserPolicyInput{
 		PolicyName: &policy,
@@ -186,7 +175,7 @@ func GetUserPolicy(policy string, ident IAM) (*string, error) {
 
 	if err != nil {
 		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get user policies: %w", err)
 	}
 
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
@@ -197,8 +186,8 @@ func GetRolePolicy(policy string, ident IAM) (*string, error) {
 	var result *iam.GetRolePolicyOutput
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	result, err := svc.GetRolePolicy(&iam.GetRolePolicyInput{
 		PolicyName: &policy,
@@ -207,7 +196,7 @@ func GetRolePolicy(policy string, ident IAM) (*string, error) {
 
 	if err != nil {
 		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get role policies: %w", err)
 	}
 
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
@@ -218,8 +207,8 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 	var result *iam.GetGroupPolicyOutput
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(group))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	result, err := svc.GetGroupPolicy(&iam.GetGroupPolicyInput{
 		PolicyName: &policy,
@@ -228,7 +217,7 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 
 	if err != nil {
 		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get group policies: %w", err)
 	}
 
 	temp, _ := url.QueryUnescape(*result.PolicyDocument)
@@ -238,8 +227,8 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListRolePoliciesInput{
 		RoleName: aws.String(ident.Name),
@@ -247,7 +236,8 @@ func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 
 	result, err := svc.ListRolePolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -258,10 +248,6 @@ func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 			}
 
 			return iam.ListRolePoliciesOutput{}, aerr
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(err)
 		}
 
 		return iam.ListRolePoliciesOutput{}, err
@@ -273,8 +259,8 @@ func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
 func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
 
-	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListGroupsForUserInput{
 		UserName: aws.String(ident.Name),
@@ -282,7 +268,8 @@ func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
 
 	result, err := svc.ListGroupsForUser(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -293,10 +280,6 @@ func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
 			}
 
 			return iam.ListGroupsForUserOutput{}, aerr
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(err)
 		}
 
 		return iam.ListGroupsForUserOutput{}, err
@@ -307,8 +290,8 @@ func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
 
 func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, error) {
 	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	creds := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: creds})
+	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
+	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
 
 	input := &iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(ident.Name),
@@ -316,7 +299,8 @@ func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, err
 
 	result, err := svc.ListAttachedRolePolicies(input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case iam.ErrCodeNoSuchEntityException:
 				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
@@ -327,10 +311,6 @@ func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, err
 			}
 
 			return iam.ListAttachedRolePoliciesOutput{}, aerr
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Error().Err(err)
 		}
 
 		return iam.ListAttachedRolePoliciesOutput{}, err

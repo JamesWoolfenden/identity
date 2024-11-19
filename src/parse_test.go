@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
 	}{
 		{"pass", args{"{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\"s3:*\",\"s3-object-lambda:*\"],\n            \"Resource\": [\"*\"]\n        }\n    ]\n}"},
 			Policy{Version: "2012-10-17", Statements: []Statement{{Sid: "", Effect: "Allow", Action: []string{"s3:*", "s3-object-lambda:*"}, Resource: []string{"*"}}}}},
-		{"fail", args{"guff"}, Policy{}},
+		{"fail", args{"guff"}, NewPolicy()},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -113,19 +113,19 @@ func TestParseEdgeCases(t *testing.T) {
 		{
 			name:    "empty_string",
 			args:    args{raw: ""},
-			want:    Policy{},
+			want:    NewPolicy(),
 			wantErr: true,
 		},
 		{
 			name:    "invalid_json",
 			args:    args{raw: "{not a json}"},
-			want:    Policy{},
+			want:    NewPolicy(),
 			wantErr: true,
 		},
 		{
 			name:    "missing_version",
 			args:    args{raw: `{"Statement": [{"Effect": "Allow", "Action": ["s3:*"], "Resource": ["*"]}]}`},
-			want:    Policy{},
+			want:    NewPolicy(),
 			wantErr: true,
 		},
 		{

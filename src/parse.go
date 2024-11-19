@@ -20,13 +20,20 @@ const (
 	ActionField    = "Action"
 )
 
+func NewPolicy() Policy {
+	return Policy{
+		Version:    "",
+		Statements: make([]Statement, 0),
+	}
+}
+
 func (m *EmptyParseError) Error() string {
 	return "cannot parse such empty"
 }
 
 func Parse(raw string) (Policy, error) {
 	if raw == "" {
-		return Policy{}, &EmptyParseError{}
+		return NewPolicy(), &EmptyParseError{}
 	}
 
 	var aJSON map[string]interface{}
@@ -34,7 +41,7 @@ func Parse(raw string) (Policy, error) {
 	err := json.Unmarshal([]byte(raw), &aJSON)
 
 	if err != nil {
-		return Policy{}, err
+		return NewPolicy(), err
 	}
 
 	var myPolicy Policy
@@ -42,7 +49,7 @@ func Parse(raw string) (Policy, error) {
 	if version, ok := aJSON[VersionField].(string); ok {
 		myPolicy.Version = version
 	} else {
-		return Policy{}, fmt.Errorf("invalid Version format")
+		return NewPolicy(), fmt.Errorf("invalid Version format")
 	}
 
 	if statements, ok := aJSON[StatementField].([]interface{}); ok {
@@ -66,7 +73,7 @@ func parseIamStatement(statement interface{}, myPolicy Policy) (Policy, error) {
 	if effect, ok := statement.(map[string]interface{})[EffectField].(string); ok {
 		myStatement.Effect = effect
 	} else {
-		return Policy{}, fmt.Errorf("invalid Effect format")
+		return NewPolicy(), fmt.Errorf("invalid Effect format")
 	}
 
 	rawResource := statement.(map[string]interface{})[ResourceField]
