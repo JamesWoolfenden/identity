@@ -1,10 +1,11 @@
 package Identity
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 func TestSetIamType(t *testing.T) {
@@ -76,7 +77,7 @@ func TestGetIam(t *testing.T) {
 				{
 					Sid:      "VisualEditor0",
 					Effect:   "Allow",
-					Action:   []string{"ec2:DescribeSpotDatafeedSubscription"},
+					Action:   []string{"ec2:DescribeVpnConnections", "rds:DescribeGlobalClusters", "ecr-public:DescribeImages"},
 					Resource: []string{"*"},
 				},
 			},
@@ -93,7 +94,7 @@ func TestGetIam(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetIam()
+			got, err := GetIam(context.Background())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetIam() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -191,7 +192,7 @@ func TestGetPoliciesForGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetPoliciesForGroup(tt.input)
+			got, err := GetPoliciesForGroup(context.Background(), tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetPoliciesForGroup() error = %v, wantErr %v", err, tt.wantErr)
 				return

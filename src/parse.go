@@ -99,14 +99,6 @@ func parseIamStatement(statement interface{}, myPolicy Policy) (Policy, error) {
 	return myPolicy, nil
 }
 
-func isArray(arr interface{}) bool {
-	// Get the type of the variable using reflection
-	t := reflect.TypeOf(arr)
-
-	// Check if the type is an array
-	return t.Kind() == reflect.Array
-}
-
 func isSlice(arr interface{}) bool {
 	// Get the type of the variable using reflection
 	t := reflect.TypeOf(arr)

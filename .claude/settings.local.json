@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test ./... -v)",
+      "Bash(go get github.com/aws/aws-sdk-go-v2/config@latest)",
+      "Bash(go get github.com/aws/aws-sdk-go-v2/service/iam@latest)",
+      "Bash(go get github.com/aws/aws-sdk-go-v2/service/sts@latest)",
+      "Bash(go get github.com/aws/aws-sdk-go-v2/credentials@latest)",
+      "Bash(go test ./...)"
+    ]
+  }
+}

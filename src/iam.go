@@ -1,13 +1,14 @@
 package Identity
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -55,22 +56,22 @@ func SetIamType(result *sts.GetCallerIdentityOutput) (IAM, error) {
 	return myIdentity, fmt.Errorf("unable to determine iam type for %s", *result.Arn)
 }
 
-func GetIam() (IAM, error) {
-	mySession := session.Must(session.NewSession())
+func GetIam(ctx context.Context) (IAM, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(GetAWSProfile()))
+	if err != nil {
+		return IAM{}, fmt.Errorf("failed to load AWS config: %w", err)
+	}
 
-	svc := sts.New(mySession)
+	svc := sts.NewFromConfig(cfg)
 	input := &sts.GetCallerIdentityInput{}
 
-	result, err := svc.GetCallerIdentity(input)
+	result, err := svc.GetCallerIdentity(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			default:
-				log.Error().Err(aerr)
-			}
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			log.Error().Msgf("API error: %s - %s", apiErr.ErrorCode(), apiErr.ErrorMessage())
 		}
-		return IAM{}, nil
+		return IAM{}, fmt.Errorf("failed to get caller identity: %w", err)
 	}
 
 	iamIdentity, err := SetIamType(result)
@@ -83,14 +84,14 @@ func GetIam() (IAM, error) {
 
 	switch iamIdentity.IamType {
 	case UserType:
-		UserPolicies, err := GetUserPolicies(iamIdentity)
+		UserPolicies, err := GetUserPolicies(ctx, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get user policies: %w", err)
 		}
 
 		for _, v := range UserPolicies.PolicyNames {
-			policyDocument, err := GetUserPolicy(*v, iamIdentity)
+			policyDocument, err := GetUserPolicy(ctx, v, iamIdentity)
 
 			if err != nil {
 				return IAM{}, fmt.Errorf("failed to get user policies from policy names : %w", err)
@@ -104,14 +105,14 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
-		MoreUserPolicies, err := GetAttachedUserPolicies(iamIdentity)
+		MoreUserPolicies, err := GetAttachedUserPolicies(ctx, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get attached user policies: %w", err)
 		}
 
 		for _, v := range MoreUserPolicies.AttachedPolicies {
-			raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
+			raw, err := GetPolicy(ctx, *v.PolicyArn, iamIdentity)
 
 			if err != nil {
 				return IAM{}, fmt.Errorf("failed in call to getPolicy: %w", err)
@@ -125,7 +126,7 @@ func GetIam() (IAM, error) {
 		}
 
 		//what groups is this user in?
-		groups, err := GetUserGroups(iamIdentity)
+		groups, err := GetUserGroups(ctx, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get user groups: %w", err)
@@ -138,7 +139,7 @@ func GetIam() (IAM, error) {
 				Account: iamIdentity.Account,
 			}
 
-			groupPolicies, err := GetPoliciesForGroup(tempIdentity)
+			groupPolicies, err := GetPoliciesForGroup(ctx, tempIdentity)
 
 			if err != nil {
 				return IAM{}, fmt.Errorf("failed to get user policies from group: %w", err)
@@ -148,19 +149,19 @@ func GetIam() (IAM, error) {
 		}
 
 	case GroupType:
-		iam, err2 := GetPoliciesForGroup(iamIdentity)
+		iam, err2 := GetPoliciesForGroup(ctx, iamIdentity)
 		if err2 != nil {
 			return iam, fmt.Errorf("failed to get policies for group: %w", err2)
 		}
 	case RoleType:
-		RolePolicies, err := GetRolePolicies(iamIdentity)
+		RolePolicies, err := GetRolePolicies(ctx, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get role policies: %w", err)
 		}
 
 		for _, v := range RolePolicies.PolicyNames {
-			policyDocument, err := GetRolePolicy(*v, iamIdentity)
+			policyDocument, err := GetRolePolicy(ctx, v, iamIdentity)
 
 			if err != nil {
 				return IAM{}, fmt.Errorf("failed to get role policies: %w", err)
@@ -175,13 +176,13 @@ func GetIam() (IAM, error) {
 			iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 		}
 
-		MoreRolePolicies, err := GetAttachedRolePolicies(iamIdentity)
+		MoreRolePolicies, err := GetAttachedRolePolicies(ctx, iamIdentity)
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get attached role policies: %w", err)
 		}
 
 		for _, v := range MoreRolePolicies.AttachedPolicies {
-			policy, err := GetPolicy(*v.PolicyArn, iamIdentity)
+			policy, err := GetPolicy(ctx, *v.PolicyArn, iamIdentity)
 
 			if err != nil {
 				return IAM{}, fmt.Errorf("failed to get policies: %w", err)
@@ -201,15 +202,15 @@ func GetIam() (IAM, error) {
 	return iamIdentity, nil
 }
 
-func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
-	GroupPolicies, err := GetAttachedGroupPolicies(iamIdentity)
+func GetPoliciesForGroup(ctx context.Context, iamIdentity IAM) (IAM, error) {
+	GroupPolicies, err := GetAttachedGroupPolicies(ctx, iamIdentity)
 
 	if err != nil {
 		return IAM{}, fmt.Errorf("failed to get attached group policies: %w", err)
 	}
 
 	for _, v := range GroupPolicies.AttachedPolicies {
-		raw, err := GetPolicy(*v.PolicyArn, iamIdentity)
+		raw, err := GetPolicy(ctx, *v.PolicyArn, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get policies: %w", err)
@@ -224,14 +225,14 @@ func GetPoliciesForGroup(iamIdentity IAM) (IAM, error) {
 		iamIdentity.Policies = append(iamIdentity.Policies, Parsed)
 	}
 
-	MoreGroupPolicies, err := GetGroupPolicies(iamIdentity)
+	MoreGroupPolicies, err := GetGroupPolicies(ctx, iamIdentity)
 
 	if err != nil {
 		return IAM{}, fmt.Errorf("failed to get group policies: %w", err)
 	}
 
 	for _, v := range MoreGroupPolicies.PolicyNames {
-		raw, err := GetGroupPolicy(*v, iamIdentity)
+		raw, err := GetGroupPolicy(ctx, v, iamIdentity)
 
 		if err != nil {
 			return IAM{}, fmt.Errorf("failed to get group policies: %w", err)

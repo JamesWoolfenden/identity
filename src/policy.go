@@ -1,147 +1,177 @@
 package Identity
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/rs/zerolog/log"
 )
 
-func GetAttachedGroupPolicies(group IAM) (iam.ListAttachedGroupPoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+const defaultProfile = "basic"
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
+// GetAWSProfile returns the AWS profile to use, from env var or default
+func GetAWSProfile() string {
+	if profile := os.Getenv("AWS_PROFILE"); profile != "" {
+		return profile
+	}
+	return defaultProfile
+}
 
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+// getConfigWithAssumedRole returns an AWS config with assumed role credentials
+func getConfigWithAssumedRole(ctx context.Context, account IAM) (aws.Config, error) {
+	// Load base config with profile
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(GetAWSProfile()))
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Create STS client for assuming role
+	stsClient := sts.NewFromConfig(cfg)
+
+	// Create credentials provider that assumes the role
+	roleARN := FormatRole(account)
+	provider := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
+
+	// Create new config with assumed role credentials
+	cfg.Credentials = aws.NewCredentialsCache(provider)
+
+	return cfg, nil
+}
+
+func GetAttachedGroupPolicies(ctx context.Context, group IAM) (*iam.ListAttachedGroupPoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, group)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
+
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListAttachedGroupPoliciesInput{
 		GroupName: aws.String(group.Name),
 	}
 
-	result, err := svc.ListAttachedGroupPolicies(input)
+	result, err := svc.ListAttachedGroupPolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("Exception type: %s %s", iam.ErrCodeNoSuchEntityException, aerr)
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("Exception type: %s %s", iam.ErrCodeServiceFailureException, aerr)
-			default:
-				log.Error().Err(aerr)
-			}
-
-			return iam.ListAttachedGroupPoliciesOutput{}, aerr
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("Exception type: NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("Exception type: ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Err(err)
 		}
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetGroupPolicies(group IAM) (iam.ListGroupPoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
+func GetGroupPolicies(ctx context.Context, group IAM) (*iam.ListGroupPoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, group)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListGroupPoliciesInput{
 		GroupName: aws.String(group.Name),
 	}
 
-	result, err := svc.ListGroupPolicies(input)
+	result, err := svc.ListGroupPolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Msg(aerr.Error())
-			}
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Msg(err.Error())
 		}
-		return iam.ListGroupPoliciesOutput{}, nil
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetUserPolicies(user IAM) (iam.ListUserPoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	credentials := stscreds.NewCredentials(mySession, FormatRole(user))
+func GetUserPolicies(ctx context.Context, user IAM) (*iam.ListUserPoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListUserPoliciesInput{
 		UserName: aws.String(user.Name),
 	}
 
-	result, err := svc.ListUserPolicies(input)
+	result, err := svc.ListUserPolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Msgf("Please deploy the identity role %s", aerr)
-			}
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Msgf("Please deploy the identity role %s", err)
 		}
-
-		return iam.ListUserPoliciesOutput{}, err
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetAttachedUserPolicies(user IAM) (iam.ListAttachedUserPoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	credentials := stscreds.NewCredentials(mySession, FormatRole(user))
+func GetAttachedUserPolicies(ctx context.Context, user IAM) (*iam.ListAttachedUserPoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListAttachedUserPoliciesInput{
 		UserName: aws.String(user.Name),
 	}
 
-	result, err := svc.ListAttachedUserPolicies(input)
+	result, err := svc.ListAttachedUserPolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Err(aerr)
-			}
-
-			return iam.ListAttachedUserPoliciesOutput{}, aerr
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Err(err)
 		}
-		return iam.ListAttachedUserPoliciesOutput{}, err
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetPolicy(arn string, account IAM) (*string, error) {
-	var result *iam.GetPolicyOutput
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	credentials := stscreds.NewCredentials(mySession, FormatRole(account))
+func GetPolicy(ctx context.Context, arn string, account IAM) (*string, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, account)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
-	result, err := svc.GetPolicy(&iam.GetPolicyInput{
+	result, err := svc.GetPolicy(ctx, &iam.GetPolicyInput{
 		PolicyArn: &arn,
 	})
 
@@ -150,25 +180,32 @@ func GetPolicy(arn string, account IAM) (*string, error) {
 		return nil, fmt.Errorf("failed to get policies: %w", err)
 	}
 
-	version, err := svc.GetPolicyVersion(&iam.GetPolicyVersionInput{VersionId: result.Policy.DefaultVersionId, PolicyArn: result.Policy.Arn})
+	version, err := svc.GetPolicyVersion(ctx, &iam.GetPolicyVersionInput{
+		VersionId: result.Policy.DefaultVersionId,
+		PolicyArn: result.Policy.Arn,
+	})
 
 	if err != nil {
 		log.Error().Err(err)
 		return nil, fmt.Errorf("failed to get policy version: %w", err)
 	}
 
-	temp, _ := url.QueryUnescape(*version.PolicyVersion.Document)
+	temp, err := url.QueryUnescape(*version.PolicyVersion.Document)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unescape policy document: %w", err)
+	}
 	return &temp, nil
 }
 
-func GetUserPolicy(policy string, ident IAM) (*string, error) {
-	var result *iam.GetUserPolicyOutput
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+func GetUserPolicy(ctx context.Context, policy string, ident IAM) (*string, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, ident)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
-	result, err := svc.GetUserPolicy(&iam.GetUserPolicyInput{
+	result, err := svc.GetUserPolicy(ctx, &iam.GetUserPolicyInput{
 		PolicyName: &policy,
 		UserName:   &ident.Name,
 	})
@@ -178,18 +215,22 @@ func GetUserPolicy(policy string, ident IAM) (*string, error) {
 		return nil, fmt.Errorf("failed to get user policies: %w", err)
 	}
 
-	temp, _ := url.QueryUnescape(*result.PolicyDocument)
+	temp, err := url.QueryUnescape(*result.PolicyDocument)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unescape policy document: %w", err)
+	}
 	return &temp, nil
 }
 
-func GetRolePolicy(policy string, ident IAM) (*string, error) {
-	var result *iam.GetRolePolicyOutput
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+func GetRolePolicy(ctx context.Context, policy string, ident IAM) (*string, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, ident)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
-	result, err := svc.GetRolePolicy(&iam.GetRolePolicyInput{
+	result, err := svc.GetRolePolicy(ctx, &iam.GetRolePolicyInput{
 		PolicyName: &policy,
 		RoleName:   &ident.Name,
 	})
@@ -199,18 +240,22 @@ func GetRolePolicy(policy string, ident IAM) (*string, error) {
 		return nil, fmt.Errorf("failed to get role policies: %w", err)
 	}
 
-	temp, _ := url.QueryUnescape(*result.PolicyDocument)
+	temp, err := url.QueryUnescape(*result.PolicyDocument)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unescape policy document: %w", err)
+	}
 	return &temp, nil
 }
 
-func GetGroupPolicy(policy string, group IAM) (*string, error) {
-	var result *iam.GetGroupPolicyOutput
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+func GetGroupPolicy(ctx context.Context, policy string, group IAM) (*string, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, group)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(group))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
-	result, err := svc.GetGroupPolicy(&iam.GetGroupPolicyInput{
+	result, err := svc.GetGroupPolicy(ctx, &iam.GetGroupPolicyInput{
 		PolicyName: &policy,
 		GroupName:  &group.Name,
 	})
@@ -220,101 +265,96 @@ func GetGroupPolicy(policy string, group IAM) (*string, error) {
 		return nil, fmt.Errorf("failed to get group policies: %w", err)
 	}
 
-	temp, _ := url.QueryUnescape(*result.PolicyDocument)
+	temp, err := url.QueryUnescape(*result.PolicyDocument)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unescape policy document: %w", err)
+	}
 	return &temp, nil
 }
 
-func GetRolePolicies(ident IAM) (iam.ListRolePoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+func GetRolePolicies(ctx context.Context, ident IAM) (*iam.ListRolePoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, ident)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListRolePoliciesInput{
 		RoleName: aws.String(ident.Name),
 	}
 
-	result, err := svc.ListRolePolicies(input)
+	result, err := svc.ListRolePolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Err(aerr)
-			}
-
-			return iam.ListRolePoliciesOutput{}, aerr
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Err(err)
 		}
-
-		return iam.ListRolePoliciesOutput{}, err
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetUserGroups(ident IAM) (iam.ListGroupsForUserOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
+func GetUserGroups(ctx context.Context, ident IAM) (*iam.ListGroupsForUserOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, ident)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
 
-	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListGroupsForUserInput{
 		UserName: aws.String(ident.Name),
 	}
 
-	result, err := svc.ListGroupsForUser(input)
+	result, err := svc.ListGroupsForUser(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Err(aerr)
-			}
-
-			return iam.ListGroupsForUserOutput{}, aerr
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Err(err)
 		}
-
-		return iam.ListGroupsForUserOutput{}, err
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
 
-func GetAttachedRolePolicies(ident IAM) (iam.ListAttachedRolePoliciesOutput, error) {
-	mySession := session.Must(session.NewSessionWithOptions(session.Options{Profile: "basic"}))
-	credentials := stscreds.NewCredentials(mySession, FormatRole(ident))
-	svc := iam.New(mySession, &aws.Config{Credentials: credentials})
+func GetAttachedRolePolicies(ctx context.Context, ident IAM) (*iam.ListAttachedRolePoliciesOutput, error) {
+	cfg, err := getConfigWithAssumedRole(ctx, ident)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config with assumed role: %w", err)
+	}
+
+	svc := iam.NewFromConfig(cfg)
 
 	input := &iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(ident.Name),
 	}
 
-	result, err := svc.ListAttachedRolePolicies(input)
+	result, err := svc.ListAttachedRolePolicies(ctx, input)
 	if err != nil {
-		var aerr awserr.Error
-		if errors.As(err, &aerr) {
-			switch aerr.Code() {
-			case iam.ErrCodeNoSuchEntityException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeNoSuchEntityException, aerr.Error())
-			case iam.ErrCodeServiceFailureException:
-				log.Error().Msgf("iam exception %s %s", iam.ErrCodeServiceFailureException, aerr.Error())
-			default:
-				log.Error().Err(aerr)
-			}
-
-			return iam.ListAttachedRolePoliciesOutput{}, aerr
+		var nse *types.NoSuchEntityException
+		var sfe *types.ServiceFailureException
+		if errors.As(err, &nse) {
+			log.Error().Msgf("iam exception NoSuchEntity %s", *nse.Message)
+		} else if errors.As(err, &sfe) {
+			log.Error().Msgf("iam exception ServiceFailure %s", *sfe.Message)
+		} else {
+			log.Error().Err(err)
 		}
-
-		return iam.ListAttachedRolePoliciesOutput{}, err
+		return nil, err
 	}
 
-	return *result, nil
+	return result, nil
 }
