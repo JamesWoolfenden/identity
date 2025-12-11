@@ -67,4 +67,3 @@ func TestSetIamType(t *testing.T) {
 		})
 	}
 }
-
