@@ -34,7 +34,7 @@ repos:
       - id: markdownlint
         exclude: src/testdata|testdata
   - repo: https://github.com/jameswoolfenden/pre-commit
-    rev: 8ddc242e16a0ec7763b63e6f5a464f14325bbc10 # v0.1.55
+    rev: 4997cf8b63896568143d5c6e820741214bc9f314 # v0.1.61
     hooks:
       - id: terraform-fmt
         language_version: python3.11
@@ -52,7 +52,7 @@ repos:
       - id: go-mod-tidy
       - id: go-generate
   - repo: https://github.com/jameswoolfenden/ghat
-    rev: 39564606bb33ecaae4a339a36d6184fbc71df734 # v0.1.26
+    rev: a386050ae690ce55f567aaf177fa0516427f014a # v0.1.28
     hooks:
       - id: ghat-go
         name: ghat
